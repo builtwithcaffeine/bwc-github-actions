@@ -1,0 +1,106 @@
+name: Azure Static Web Apps CI/CD
+# Ref for initial Fix: https://github.com/Azure/static-web-apps/issues/322
+
+on:
+  push:
+    branches:
+      - dev-main
+  workflow_dispatch:
+  # pull_request:
+  #   types: [opened, synchronize, reopened, closed]
+  #   branches:
+  #     - dev-main
+
+jobs:
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cache Hugo version
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/bin/hugo
+          key: ${{ runner.os }}-hugo-${{ hashFiles('**/hugo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-hugo-
+
+      - name: Download and Install Hugo
+        run: |
+          latest_version=$(curl -s https://api.github.com/repos/gohugoio/hugo/releases/latest | jq -r .tag_name)
+          echo "Latest Hugo version is $latest_version"
+          HUGO_VERSION="$latest_version"
+
+          decrement_version() {
+              local version="$1"
+              local major_minor="${version%.*}"
+              local patch="${version##*.}"
+              local new_patch=$((patch - 1))
+              echo "${major_minor}.${new_patch}"
+          }
+
+          while true; do
+              DOWNLOAD_URL="https://github.com/gohugoio/hugo/releases/download/${HUGO_VERSION}/hugo_extended_${HUGO_VERSION#v}_Linux-64bit.tar.gz"
+              echo "Attempting to download Hugo from: $DOWNLOAD_URL"
+              
+              if curl --head --silent --fail "$DOWNLOAD_URL" > /dev/null; then
+                  echo " " # verbose spacing
+                  
+                  curl -LO "$DOWNLOAD_URL"
+                  break
+              else
+                  echo "Hugo version $HUGO_VERSION not found. Rolling back to previous patch version."
+                  echo " " # verbose spacing 
+                  
+                  HUGO_VERSION=$(decrement_version "$HUGO_VERSION")
+                  
+                  if [[ "$HUGO_VERSION" == "v0.0.0" ]]; then
+                      echo "No valid versions found. Exiting."
+                      exit 1
+                  fi
+              fi
+          done
+
+          tar -zxf "hugo_extended_${HUGO_VERSION#v}_Linux-64bit.tar.gz"
+          chmod +x hugo
+          sudo mv hugo /usr/local/bin/
+          echo "Hugo: $HUGO_VERSION Installed!"
+
+      - name: Check Hugo version
+        run: hugo version
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          path: ./action-hugo-swa-builder
+
+      - name: Build Hugo Site
+        run: |
+          echo "Building Hugo Site, Directory [./action-hugo-swa-builder]"
+          cd ./action-hugo-swa-builder
+          hugo --minify
+
+      - name: Deploy Static Web App
+        id: builddeploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.<repalce-with-AZURE_STATIC_WEB_APPS_API_TOKEN> }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          skip_app_build: true
+          app_location: "./action-hugo-swa-builder/public"
+          api_location: ""
+          output_location: "public"
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        id: closepullrequest
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.<repalce-with-AZURE_STATIC_WEB_APPS_API_TOKEN> }}
+          action: "close"
