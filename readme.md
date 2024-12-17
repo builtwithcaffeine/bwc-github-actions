@@ -12,7 +12,7 @@ This repository contains GitHub Actions YAML configuration files designed for au
 Learn more about the improvements and optimizations made in these GitHub Actions through the following blog posts:
 
 - [Hugo GitHub Action Improvements - Part One](https://blog.builtwithcaffeine.cloud/posts/hugo-github-action-improvements/)
-- [Hugo GitHub Action Improvements - Part Two](https://blog.builtwithcaffeine.cloud/posts/hugo-github-action-improvements/-part-two/)
+- [Hugo GitHub Action Improvements - Part Two](https://blog.builtwithcaffeine.cloud/posts/hugo-github-action-improvements-part-two/)
 
 ## How to Use
 
