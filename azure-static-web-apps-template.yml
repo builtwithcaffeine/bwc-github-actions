@@ -17,14 +17,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Cache Hugo version
-        uses: actions/cache@v3
-        with:
-          path: /usr/local/bin/hugo
-          key: ${{ runner.os }}-hugo-${{ hashFiles('**/hugo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-hugo-
-
       - name: Download and Install Hugo
         run: |
           latest_version=$(curl -s https://api.github.com/repos/gohugoio/hugo/releases/latest | jq -r .tag_name)
